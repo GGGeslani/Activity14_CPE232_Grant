@@ -1,0 +1,146 @@
+#Nova Install and Configuration
+
+- name: Installing Nova Packages
+  apt:
+    name:
+      - nova-api
+      - nova-conductor
+      - nova-novncproxy
+      - nova-scheduler
+    state: latest
+
+- name: Editing Nova [api_database] In Configuration File
+  lineinfile:
+        dest: /etc/nova/nova.conf
+        insertafter: '\[api_database\]'
+        regexp: '^connection = mysql+pymysql://nova:NOVA_DBPASS@controller/nova_api'
+        line: 'connection = mysql+pymysql://nova:pass123@controller/nova_api'
+        state: present
+        backup: yes
+        backrefs: yes
+
+- name: Editing Nova [database] In Configuration File
+  lineinfile:
+        dest: /etc/nova/nova.conf
+        insertafter: '\[database\]'
+        regexp: '^connection = mysql+pymysql://nova:NOVA_DBPASS@controller/nova'
+        line: 'connection = mysql+pymysql://nova:pass123@controller/nova'
+        state: present
+        backup: yes
+        backrefs: yes
+
+- name: Editing Nova [api] In Configuration File
+  lineinfile:
+        dest: /etc/nova/nova.conf
+        insertafter: '\[api\]'
+        line: 'auth_strategy = keystone'
+        state: present
+        backup: yes
+
+- name: Editing Nova [keystone_authtoken] In Configuration File
+  lineinfile:
+        dest: /etc/glance/glance-api.conf
+        insertafter: '\[keystone_authtoken\]'
+        line: "{{ item  }}"
+        state: present
+        backup: yes
+  with_items:
+        - www_authenticate_uri = http://controller:5000/
+        - auth_url = http://controller:5000/
+        - memcached_servers = controller:11211
+        - auth_type = password
+        - project_domain_name = Default
+        - user_domain_name = Default
+        - project_name = service
+        - username = nova
+        - password = pass123
+
+- name: Editing Nova [DEFAULT] In Configuration File
+  lineinfile:
+        dest: /etc/nova/nova.conf
+        insertafter: '\[DEFAULT\]'
+        line: 'my_ip = 10.0.0.11'
+        state: present
+        backup: yes
+
+- name: Editing Nova [vnc] In Configuration File
+  lineinfile:
+        dest: /etc/glance/glance-api.conf
+        insertafter: '\[vnc\]'
+        line: "{{ item  }}"
+        state: present
+        backup: yes
+  with_items:
+        - enabled = true
+        - server_listen = $my_ip
+        - server_proxyclient_address = $my_ip
+
+- name: Editing Nova [glance] In Configuration File
+  lineinfile:
+        dest: /etc/nova/nova.conf
+        insertafter: '\[glance\]'
+        line: 'api_servers = http://controller:9292'
+        state: present
+        backup: yes
+
+- name: Editing Nova [oslo_concurrency] In Configuration File
+  lineinfile:
+        dest: /etc/nova/nova.conf
+        insertafter: '\[oslo_concurrency\]'
+        line: 'lock_path = /var/lib/nova/tmp'
+        state: present
+        backup: yes
+
+- name: Editing Nova [placement] In Configuration File
+  lineinfile:
+        dest: /etc/glance/glance-api.conf
+        insertafter: '\[placement\]'
+        line: "{{ item  }}"
+        state: present
+        backup: yes
+  with_items:
+        - region_name = RegionOne
+        - project_domain_name = Default
+        - project_name = service
+        - auth_type = password
+        - user_domain_name = Default
+        - auth_url = http://controller:5000/v3
+        - username = placement
+        - password = pass123
+
+- name: Populate The nova-api Database
+  shell: 
+    sudo nova-manage api_db sync
+
+- name: Register The cell0 Database
+  shell: 
+    sudo nova-manage cell_v2 map_cell0
+
+#- name: Create The cell1 Cell
+ # shell: 
+   # sudo nova-manage cell_v2 create_cell --name=cell1 --verbose
+
+- name: Populate The Nova Database
+  shell: 
+    sudo nova-manage db sync
+
+- name: Verify Nova cell0 And cell1 Are Registered Correctly
+  shell: 
+    sudo nova-manage cell_v2 list_cells
+
+- name: Restart Compute Service 1
+  shell: 
+    service nova-api restart
+
+- name: Restart Compute Service 2
+  shell: 
+    service nova-scheduler restart
+
+- name: Restart Compute Service 3
+  shell:
+    service nova-conductor restart
+
+- name: Restart Compute Service 4
+  shell:
+    service nova-novncproxy restart
+

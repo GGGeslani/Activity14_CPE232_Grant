@@ -1,0 +1,87 @@
+#Keystone Installing and Configuration
+- name: Installing Keystone Package
+  apt:
+    name:
+      - keystone
+    state: latest
+
+- name: Editing Keystone [database] In Configuration File
+  lineinfile:
+        dest: /etc/keystone/keystone.conf
+        insertafter: '\[database\]'
+        regexp: '^connection = mysql+pymysql://keystone:KEYSTONE_DBPASS@controller/keystone'
+        line: 'connection = mysql+pymysql://keystone:pass123@controller/keystone'
+        state: present
+        backup: yes
+        backrefs: yes
+
+- name: Editing Keystone [token] in Configuration File
+  lineinfile:
+        dest: /etc/keystone/keystone.conf
+        insertafter: '\[token\]'
+        line: 'provider = fernet'
+        backup: yes
+
+- name: Populate The Identity Service Database
+  shell: 
+    sudo keystone-manage db_sync
+
+- name: Initializing Fernet Key Repositories 1
+  shell: 
+    keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
+
+- name: Intializing Fernet Key Repositories 2
+  shell: 
+    keystone-manage credential_setup --keystone-user keystone --keystone-group keystone
+
+#- name: Bootstrap the identity service
+ # shell: 
+   # keystone-manage bootstrap --bootstrap-password pass123 \
+ # --bootstrap-admin-url http://controller:5000/v3/ \
+ # --bootstrap-internal-url http://controller:5000/v3/ \
+ # --bootstrap-public-url http://controller:5000/v3/ \
+ # --bootstrap-region-id RegionOne
+
+- name: Configure The Apachce HTTP Server
+  lineinfile:
+        dest: /etc/apache2/apache2.conf
+        line: 'ServerName controller'
+        state: present
+        backup: yes
+
+- name: Restart Apache2 Service
+  service:
+    name: apache2
+    state: restarted
+    enabled: true
+
+- name: Configure Administrative Account Environemental Variables 1
+  shell: 
+    export OS_USERNAME=admin
+
+- name: Configure Administrative Account Environemental Variables 2
+  shell: 
+    export OS_PASSWORD=ADMIN_PASS
+
+- name: Configure Administrative Account Environemental Variables 3
+  shell: 
+    export OS_PROJECT_NAME=admin
+
+- name: Configure Administrative Account Environemental Variables 4
+  shell: 
+    export OS_USER_DOMAIN_NAME=Default
+
+- name: Configure Administrative Account Environemental Variables 5
+  shell: 
+    export OS_PROJECT_DOMAIN_NAME=Default
+
+- name: Configure Administrative Account Environemental Variables 6
+  shell: 
+    export OS_AUTH_URL=http://controller:5000/v3
+
+- name: Configure Administrative Account Environemental Variables 7
+  shell: 
+    export OS_IDENTITY_API_VERSION=3
+
+
+
