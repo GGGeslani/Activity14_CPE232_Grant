@@ -116,9 +116,9 @@
   shell: 
     sudo nova-manage cell_v2 map_cell0
 
-#- name: Create The cell1 Cell
- # shell: 
-   # sudo nova-manage cell_v2 create_cell --name=cell1 --verbose
+- name: Create The cell1 Cell
+  shell: 
+    sudo nova-manage cell_v2 create_cell --name=cell1 --verbose
 
 - name: Populate The Nova Database
   shell: 
